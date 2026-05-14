@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CallCenter AI — Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #222; }
+  header { background: #1e1e2e; color: #fff; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { font-size: 18px; font-weight: 600; }
+  #user-info { font-size: 13px; color: #aaa; }
+  #btn-logout { background: none; border: 1px solid #555; color: #ccc; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  main { max-width: 900px; margin: 32px auto; padding: 0 16px; }
+
+  /* AUTH */
+  #auth-section { background: #fff; border-radius: 12px; padding: 40px; max-width: 420px; margin: 60px auto; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  #auth-section h2 { margin-bottom: 24px; font-size: 20px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 13px; color: #555; margin-bottom: 6px; }
+  .field input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+  .btn-primary { width: 100%; background: #5b4af7; color: #fff; border: none; padding: 12px; border-radius: 8px; font-size: 15px; cursor: pointer; font-weight: 500; }
+  .btn-primary:hover { background: #4a39e6; }
+  #auth-toggle { text-align: center; margin-top: 16px; font-size: 13px; color: #888; }
+  #auth-toggle a { color: #5b4af7; cursor: pointer; text-decoration: none; }
+  #auth-error { color: #e24b4a; font-size: 13px; margin-top: 12px; text-align: center; }
+
+  /* UPLOAD */
+  #upload-section { background: #fff; border-radius: 12px; padding: 28px; margin-bottom: 28px; box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
+  #upload-section h2 { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
+  #drop-zone { border: 2px dashed #c5bef7; border-radius: 10px; padding: 36px; text-align: center; color: #888; cursor: pointer; transition: background 0.2s; }
+  #drop-zone:hover, #drop-zone.drag-over { background: #f0eeff; border-color: #5b4af7; }
+  #drop-zone p { font-size: 14px; margin-top: 8px; }
+  #file-name { margin-top: 12px; font-size: 13px; color: #5b4af7; font-weight: 500; }
+  #btn-upload { margin-top: 16px; background: #5b4af7; color: #fff; border: none; padding: 10px 28px; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: 500; }
+  #btn-upload:disabled { background: #bbb; cursor: not-allowed; }
+  #upload-status { margin-top: 12px; font-size: 13px; color: #555; }
+
+  /* CALLS LIST */
+  #calls-section h2 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+  .call-card { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 14px; box-shadow: 0 1px 6px rgba(0,0,0,0.06); cursor: pointer; transition: box-shadow 0.2s; }
+  .call-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.10); }
+  .call-header { display: flex; justify-content: space-between; align-items: center; }
+  .call-name { font-size: 14px; font-weight: 500; }
+  .call-date { font-size: 12px; color: #aaa; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; margin-top: 8px; }
+  .badge.completed { background: #eaf3de; color: #3b6d11; }
+  .badge.pending   { background: #faeeda; color: #854f0b; }
+  .badge.processing{ background: #e6f1fb; color: #185fa5; }
+  .badge.error     { background: #fcebeb; color: #a32d2d; }
+  .score-bar-wrap { margin-top: 12px; }
+  .score-label { font-size: 12px; color: #888; margin-bottom-4px; }
+  .score-bar { height: 6px; background: #eee; border-radius: 4px; margin-top: 4px; }
+  .score-fill { height: 6px; border-radius: 4px; background: #5b4af7; transition: width 0.6s; }
+
+  /* MODAL */
+  #modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: center; justify-content: center; }
+  #modal-bg.open { display: flex; }
+  #modal { background: #fff; border-radius: 14px; padding: 32px; max-width: 660px; width: 95%; max-height: 85vh; overflow-y: auto; position: relative; }
+  #modal h3 { font-size: 17px; font-weight: 600; margin-bottom: 20px; }
+  #btn-close { position: absolute; top: 16px; right: 20px; background: none; border: none; font-size: 22px; cursor: pointer; color: #888; }
+  .section-title { font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 8px; }
+  .transcription-box { background: #f8f8f8; border-radius: 8px; padding: 14px; font-size: 13px; line-height: 1.7; color: #333; white-space: pre-wrap; }
+  .analysis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+  .analysis-item { background: #f8f8f8; border-radius: 8px; padding: 12px; }
+  .analysis-item .label { font-size: 11px; color: #888; margin-bottom: 4px; }
+  .analysis-item .value { font-size: 14px; font-weight: 500; }
+  .list-items { margin-top: 4px; }
+  .list-items li { font-size: 13px; color: #444; margin-bottom: 4px; list-style: none; padding-left: 16px; position: relative; }
+  .list-items li::before { content: "•"; position: absolute; left: 0; color: #5b4af7; }
+  #btn-refresh { background: none; border: 1px solid #ddd; padding: 7px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; margin-bottom: 16px; }
+  #btn-refresh:hover { background: #f5f5f5; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <h1>CallCenter AI</h1>
+  <div style="display:flex;align-items:center;gap:16px">
+    <span id="user-info"></span>
+    <button id="btn-logout" onclick="logout()" style="display:none">Cerrar sesión</button>
+  </div>
+</header>
+
+<!-- AUTH -->
+<div id="auth-section">
+  <h2 id="auth-title">Iniciar sesión</h2>
+  <div id="register-fields" style="display:none">
+    <div class="field"><label>Nombre</label><input id="inp-name" type="text" placeholder="Tu nombre"></div>
+    <div class="field"><label>Empresa</label><input id="inp-company" type="text" placeholder="Nombre del call center"></div>
+  </div>
+  <div class="field"><label>Email</label><input id="inp-email" type="email" placeholder="correo@empresa.com"></div>
+  <div class="field"><label>Contraseña</label><input id="inp-password" type="password" placeholder="••••••••"></div>
+  <div id="confirm-field" class="field" style="display:none"><label>Confirmar contraseña</label><input id="inp-confirm" type="password" placeholder="••••••••"></div>
+  <button class="btn-primary" onclick="submitAuth()">Entrar</button>
+  <div id="auth-error"></div>
+  <div id="auth-toggle">¿No tienes cuenta? <a onclick="toggleAuth()">Regístrate</a></div>
+</div>
+
+<!-- MAIN APP -->
+<main id="app-section" style="display:none">
+
+  <!-- UPLOAD -->
+  <div id="upload-section">
+    <h2>Subir llamada</h2>
+    <div id="drop-zone" onclick="document.getElementById('file-input').click()"
+         ondragover="event.preventDefault();this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="handleDrop(event)">
+      <div style="font-size:32px">🎙</div>
+      <p>Haz clic o arrastra un audio aquí</p>
+      <p style="font-size:12px;margin-top:4px">MP3, WAV, M4A, OGG — máx 100MB</p>
+    </div>
+    <input type="file" id="file-input" accept=".mp3,.wav,.m4a,.ogg,.webm" style="display:none" onchange="selectFile(this.files[0])">
+    <div id="file-name"></div>
+    <button id="btn-upload" onclick="uploadAudio()" disabled>Procesar llamada</button>
+    <div id="upload-status"></div>
+  </div>
+
+  <!-- CALLS -->
+  <div id="calls-section">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2>Llamadas procesadas</h2>
+      <button id="btn-refresh" onclick="loadCalls()">Actualizar</button>
+    </div>
+    <div id="calls-list"></div>
+  </div>
+</main>
+
+<!-- MODAL -->
+<div id="modal-bg" onclick="closeModal(event)">
+  <div id="modal">
+    <button id="btn-close" onclick="closeModal()">×</button>
+    <h3 id="modal-title"></h3>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+const API = 'http://192.168.0.228:8000/api/v1';
+let token = localStorage.getItem('cc_token');
+let isLogin = true;
+let selectedFile = null;
+
+// INIT
+if (token) showApp();
+
+function toggleAuth() {
+  isLogin = !isLogin;
+  document.getElementById('auth-title').textContent = isLogin ? 'Iniciar sesión' : 'Crear cuenta';
+  document.getElementById('register-fields').style.display = isLogin ? 'none' : 'block';
+  document.getElementById('confirm-field').style.display = isLogin ? 'none' : 'block';
+  document.getElementById('auth-toggle').innerHTML = isLogin
+    ? '¿No tienes cuenta? <a onclick="toggleAuth()">Regístrate</a>'
+    : '¿Ya tienes cuenta? <a onclick="toggleAuth()">Inicia sesión</a>';
+  document.getElementById('auth-error').textContent = '';
+}
+
+async function submitAuth() {
+  const email    = document.getElementById('inp-email').value;
+  const password = document.getElementById('inp-password').value;
+  const url      = isLogin ? `${API}/login` : `${API}/register`;
+  const body     = isLogin ? { email, password } : {
+    email, password,
+    name:                  document.getElementById('inp-name').value,
+    company:               document.getElementById('inp-company').value,
+    password_confirmation: document.getElementById('inp-confirm').value,
+  };
+
+  try {
+    const res  = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || JSON.stringify(data.errors));
+    token = data.token;
+    localStorage.setItem('cc_token', token);
+    localStorage.setItem('cc_user', JSON.stringify(data.user));
+    showApp();
+  } catch (e) {
+    document.getElementById('auth-error').textContent = e.message;
+  }
+}
+
+function showApp() {
+  document.getElementById('auth-section').style.display = 'none';
+  document.getElementById('app-section').style.display  = 'block';
+  document.getElementById('btn-logout').style.display   = 'block';
+  const user = JSON.parse(localStorage.getItem('cc_user') || '{}');
+  document.getElementById('user-info').textContent = user.name || user.email || '';
+  loadCalls();
+}
+
+function logout() {
+  fetch(`${API}/logout`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' } });
+  localStorage.removeItem('cc_token');
+  localStorage.removeItem('cc_user');
+  token = null;
+  location.reload();
+}
+
+// FILE
+function selectFile(file) {
+  if (!file) return;
+  selectedFile = file;
+  document.getElementById('file-name').textContent = file.name;
+  document.getElementById('btn-upload').disabled = false;
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-over');
+  selectFile(e.dataTransfer.files[0]);
+}
+
+async function uploadAudio() {
+  if (!selectedFile) return;
+  const btn    = document.getElementById('btn-upload');
+  const status = document.getElementById('upload-status');
+  btn.disabled = true;
+  status.textContent = 'Subiendo audio...';
+
+  const form = new FormData();
+  form.append('audio', selectedFile);
+
+  try {
+    const res  = await fetch(`${API}/calls`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }, body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    status.textContent = 'Audio recibido. Procesando en segundo plano...';
+    selectedFile = null;
+    document.getElementById('file-name').textContent = '';
+    setTimeout(loadCalls, 3000);
+    pollCall(data.call_id, status);
+  } catch (e) {
+    status.textContent = 'Error: ' + e.message;
+    btn.disabled = false;
+  }
+}
+
+async function pollCall(uuid, statusEl) {
+  for (let i = 0; i < 60; i++) {
+    await new Promise(r => setTimeout(r, 5000));
+    try {
+      const res  = await fetch(`${API}/calls/${uuid}`, { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' } });
+      const data = await res.json();
+      if (data.status === 'completed') { statusEl.textContent = 'Análisis completado.'; loadCalls(); return; }
+      if (data.status === 'error')     { statusEl.textContent = 'Error al procesar.';   loadCalls(); return; }
+      statusEl.textContent = `Procesando... (${i * 5}s)`;
+    } catch {}
+  }
+}
+
+// CALLS
+async function loadCalls() {
+  const list = document.getElementById('calls-list');
+  list.innerHTML = '<p style="color:#aaa;font-size:13px">Cargando...</p>';
+  try {
+    const res   = await fetch(`${API}/calls`, { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' } });
+    const data  = await res.json();
+    const calls = data.data || [];
+    if (!calls.length) { list.innerHTML = '<p style="color:#aaa;font-size:13px">No hay llamadas aún.</p>'; return; }
+    list.innerHTML = calls.map(c => `
+      <div class="call-card" onclick="openModal('${c.uuid}')">
+        <div class="call-header">
+          <span class="call-name">${c.original_name}</span>
+          <span class="call-date">${new Date(c.created_at).toLocaleString('es-CO')}</span>
+        </div>
+        <span class="badge ${c.status}">${c.status}</span>
+        ${c.score != null ? `
+          <div class="score-bar-wrap">
+            <div class="score-label">Score asesor: <strong>${c.score}/100</strong></div>
+            <div class="score-bar"><div class="score-fill" style="width:${c.score}%"></div></div>
+          </div>` : ''}
+      </div>`).join('');
+  } catch (e) {
+    list.innerHTML = '<p style="color:#e24b4a;font-size:13px">Error cargando llamadas.</p>';
+  }
+}
+
+async function openModal(uuid) {
+  document.getElementById('modal-bg').classList.add('open');
+  document.getElementById('modal-title').textContent = 'Cargando...';
+  document.getElementById('modal-body').innerHTML = '';
+  const res  = await fetch(`${API}/calls/${uuid}`, { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' } });
+  const c    = await res.json();
+  const a    = c.analysis || {};
+  document.getElementById('modal-title').textContent = c.original_name;
+  document.getElementById('modal-body').innerHTML = `
+    <span class="badge ${c.status}">${c.status}</span>
+    <div class="section-title">Transcripción</div>
+    <div class="transcription-box">${c.transcription || 'Sin transcripción disponible.'}</div>
+    ${a.resumen ? `<div class="section-title">Resumen</div><p style="font-size:13px;color:#444;line-height:1.6">${a.resumen}</p>` : ''}
+    <div class="section-title">Análisis de calidad</div>
+    <div class="analysis-grid">
+      <div class="analysis-item"><div class="label">Score asesor</div><div class="value">${a.score_asesor ?? '—'}/100</div></div>
+      <div class="analysis-item"><div class="label">Sentimiento cliente</div><div class="value">${a.sentimiento_cliente ?? '—'}</div></div>
+      <div class="analysis-item"><div class="label">Tipo de llamada</div><div class="value">${a.tipo_llamada ?? '—'}</div></div>
+      <div class="analysis-item"><div class="label">Riesgo</div><div class="value">${a.riesgo ?? '—'}</div></div>
+      <div class="analysis-item"><div class="label">Cliente interesado</div><div class="value">${a.cliente_interesado ? 'Sí' : 'No'}</div></div>
+    </div>
+    ${a.fortalezas?.length ? `<div class="section-title">Fortalezas</div><ul class="list-items">${a.fortalezas.map(f=>`<li>${f}</li>`).join('')}</ul>` : ''}
+    ${a.mejoras?.length    ? `<div class="section-title">Oportunidades de mejora</div><ul class="list-items">${a.mejoras.map(m=>`<li>${m}</li>`).join('')}</ul>` : ''}
+  `;
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal-bg') || e.currentTarget === document.getElementById('btn-close'))
+    document.getElementById('modal-bg').classList.remove('open');
+}
+</script>
+</body>
+</html>

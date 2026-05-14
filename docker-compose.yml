@@ -1,0 +1,119 @@
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: cc_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - cc_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  redis:
+    image: redis:7-alpine
+    container_name: cc_redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - cc_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  laravel:
+    build: ./laravel
+    container_name: cc_laravel
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      FASTAPI_URL: http://fastapi:8001
+    volumes:
+      - ./laravel:/var/www/html
+      - ./storage/audios:/var/www/html/storage/app/audios
+    ports:
+      - "${APP_PORT}:8000"
+    networks:
+      - cc_network
+
+  laravel_worker:
+    build: ./laravel
+    container_name: cc_worker
+    restart: unless-stopped
+    command: php artisan queue:work redis --sleep=3 --tries=3 --timeout=300
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      FASTAPI_URL: http://fastapi:8001
+    volumes:
+      - ./laravel:/var/www/html
+      - ./storage/audios:/var/www/html/storage/app/audios
+    networks:
+      - cc_network
+
+  fastapi:
+    build: ./fastapi
+    container_name: cc_fastapi
+    restart: unless-stopped
+    volumes:
+      - ./fastapi:/app
+      - ./storage/audios:/app/audios
+    ports:
+      - "${FASTAPI_PORT}:8001"
+    networks:
+      - cc_network
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: cc_ollama
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    networks:
+      - cc_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  ollama_data:
+
+networks:
+  cc_network:
+    driver: bridge

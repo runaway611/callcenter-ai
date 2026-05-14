@@ -1,0 +1,28 @@
+# Env
+.env
+*.env
+
+# Laravel
+laravel/vendor/
+laravel/node_modules/
+laravel/storage/*.key
+laravel/bootstrap/cache/*
+laravel/storage/logs/*
+laravel/storage/framework/*
+laravel/.phpunit.result.cache
+
+# Python
+fastapi/__pycache__/
+fastapi/.venv/
+*.pyc
+
+# Docker
+storage/
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
