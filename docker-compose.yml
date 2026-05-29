@@ -90,6 +90,11 @@ services:
     build: ./fastapi
     container_name: cc_fastapi
     restart: unless-stopped
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: llama3.2:3b
+      OLLAMA_TIMEOUT: "120"
+      OLLAMA_RETRIES: "3"
     volumes:
       - ./fastapi:/app
       - ./storage/audios:/app/audios
